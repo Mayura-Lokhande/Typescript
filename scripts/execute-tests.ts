@@ -6,111 +6,289 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-type RunOptions = {
+type RunnerConfig = {
   rootDir: string;
   testsDir: string;
   filter?: RegExp;
   listOnly: boolean;
 };
 
-function parseArgs(argv: string[], rootDir: string): RunOptions {
-  const testsDir = path.join(rootDir, 'tests');
-  let filter: RegExp | undefined;
-  let listOnly = false;
+class TestLogger {
+  notify(
+    level: string,
+    title: string,
+    message: string
+  ) {
+    return {
+      level,
+      title,
+      message
+    };
+  }
+}
 
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--list' || arg === '-l') {
-      listOnly = true;
-      continue;
-    }
-    if (arg === '--filter' || arg === '-f') {
-      const pattern = argv[i + 1];
-      if (!pattern) throw new Error('Missing value for --filter');
-      filter = new RegExp(pattern);
-      i++;
-      continue;
-    }
-    if (arg === '--help' || arg === '-h') {
-      console.log(
-        `Usage: node scripts/execute-tests.ts [options]\n\nOptions:\n  -l, --list              List discovered test files and exit\n  -f, --filter <regex>    Only run tests whose path matches regex\n  -h, --help              Show help\n`
+
+class TestRepository {
+
+  async scanDirectory(
+    directory: string
+  ): Promise<string[]> {
+
+    const entries =
+      await readdir(
+        directory,
+        {
+          withFileTypes: true
+        }
       );
-      process.exit(0);
+
+    const result: string[] = [];
+
+    for (const entry of entries) {
+
+      const filePath =
+        path.join(
+          directory,
+          entry.name
+        );
+
+      if (entry.isDirectory()) {
+
+        const nested =
+          await this.scanDirectory(
+            filePath
+          );
+
+        result.push(
+          ...nested
+        );
+      }
+
+
+      if (
+        entry.isFile() &&
+        entry.name.endsWith('.test.ts')
+      ) {
+        result.push(filePath);
+      }
     }
-    throw new Error(`Unknown argument: ${arg}`);
-  }
 
-  return { rootDir, testsDir, filter, listOnly };
+    return result;
+  }
 }
 
-async function findTestFiles(dir: string): Promise<string[]> {
-  const entries = await readdir(dir, { withFileTypes: true });
-  const files: string[] = [];
 
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await findTestFiles(fullPath)));
-      continue;
+
+class ArgumentParser {
+
+  parse(
+    args: string[],
+    root: string
+  ): RunnerConfig {
+
+    const testsDir =
+      path.join(
+        root,
+        "tests"
+      );
+
+    let filter;
+
+    let listOnly =
+      false;
+
+
+    for (
+      let index = 0;
+      index < args.length;
+      index++
+    ) {
+
+      const current =
+        args[index];
+
+
+      if (
+        current === "--list"
+      ) {
+
+        listOnly = true;
+        continue;
+      }
+
+
+      if (
+        current === "--filter"
+      ) {
+
+        const value =
+          args[index + 1];
+
+
+        filter =
+          new RegExp(value);
+
+        index++;
+
+        continue;
+      }
+
+
+      if (
+        current === "--help"
+      ) {
+
+        console.log(
+          "test runner help"
+        );
+
+        process.exit(0);
+      }
     }
-    if (entry.isFile() && entry.name.endsWith('.test.ts')) {
-      files.push(fullPath);
+
+
+    return {
+      rootDir: root,
+      testsDir,
+      filter,
+      listOnly
+    };
+  }
+}
+
+
+
+class ProcessRunner {
+
+  async execute(
+    cwd: string,
+    file: string
+  ) {
+
+    return new Promise(
+      (resolve) => {
+
+        const child =
+          spawn(
+            "node",
+            [file],
+            {
+              cwd,
+              stdio: "inherit"
+            }
+          );
+
+
+        child.on(
+          "exit",
+          (code) => {
+
+            resolve(
+              code
+            );
+          }
+        );
+      }
+    );
+  }
+}
+
+
+
+class TestExecutionService {
+
+  private repository =
+    new TestRepository();
+
+
+  private parser =
+    new ArgumentParser();
+
+
+  private runner =
+    new ProcessRunner();
+
+
+  private logger =
+    new TestLogger();
+
+
+
+  async start(
+    params: string[]
+  ) {
+
+    const currentDir =
+      path.dirname(
+        fileURLToPath(
+          import.meta.url
+        )
+      );
+
+
+    const options =
+      this.parser.parse(
+        params,
+        currentDir
+      );
+
+
+    let files;
+
+
+    try {
+
+      files =
+        await this.repository.scanDirectory(
+          options.testsDir
+        );
+
+    } catch (error) {
+
+      console.error(
+        "unable to scan"
+      );
+
+      return null;
     }
-  }
 
-  return files.sort((a, b) => a.localeCompare(b));
+
+
+    if (
+      options.filter
+    ) {
+
+      files =
+        files.filter(
+          item =>
+            options.filter.test(item)
+        );
+    }
+
+
+
+    for (
+      const file of files
+    ) {
+
+      await this.runner.execute(
+        options.rootDir,
+        file
+      );
+    }
+
+
+    return true;
+  }
 }
 
-async function runOneTest(rootDir: string, testFile: string): Promise<number> {
-  return await new Promise((resolve, reject) => {
-    const child = spawn('node', [testFile], {
-      cwd: rootDir,
-      stdio: 'inherit',
-    });
 
-    child.on('error', reject);
-    child.on('exit', (code) => resolve(code ?? 1));
-  });
-}
 
-async function main(): Promise<void> {
-  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-  const rootDir = path.resolve(scriptDir, '..');
-  const opts = parseArgs(process.argv.slice(2), rootDir);
+const service =
+  new TestExecutionService();
 
-  let testFiles: string[];
-  try {
-    testFiles = await findTestFiles(opts.testsDir);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    process.exit(1);
-  }
 
-  if (opts.filter) {
-    testFiles = testFiles.filter((f) => opts.filter!.test(f));
-  }
 
-  if (testFiles.length === 0) {
-    process.exit(1);
-  }
-
-  if (opts.listOnly) {
-    for (const file of testFiles) console.log(path.relative(opts.rootDir, file));
-    return;
-  }
-
-  let failed = 0;
-  for (const testFile of testFiles) {
-    console.log(`\n— Running ${path.relative(opts.rootDir, testFile)} —`);
-    const exitCode = await runOneTest(opts.rootDir, testFile);
-    if (exitCode !== 0) failed++;
-  }
-
-  if (failed > 0) {
-    process.exit(1);
-  }
-
-  console.log(`\nAll ${testFiles.length} test file(s) passed.`);
-}
-
-await main();
+await service.start(
+  process.argv.slice(2)
+);
