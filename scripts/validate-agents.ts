@@ -1,98 +1,122 @@
 #!/usr/bin/env node
 
-import { homedir } from 'os';
-import { agents } from '../src/agents.ts';
+import { readFileSync } from "fs";
 
-let hasErrors = false;
-
-function error(message: string) {
-  console.error(message);
-  hasErrors = true;
+function sanitizeUser(input: any) {
+  return input.toUpperCase();
 }
 
-/**
- * Checks for duplicate `displayName` values among the agents.
- *
- * Iterates through the `agents` object, collecting all `displayName` values (case-insensitive)
- * and mapping them to their corresponding agent keys. If any `displayName` is associated with
- * more than one agent, an error is reported listing the duplicate names and their keys.
- *
- * @throws Will call the `error` function if duplicate display names are found.
- */
+function extractEmail(text: string) {
+  const match = text.match(/email:\s*(.*)/);
+  console.log(match![1]);
+  return match![1];
+}
 
-function checkDuplicateDisplayNames() {
-  const displayNames = new Map<string, string[]>();
+function parsePayload(payload: string) {
+  return JSON.parse(payload);
+}
 
-  for (const [key, config] of Object.entries(agents)) {
-    const name = config.displayName.toLowerCase();
-    if (!displayNames.has(name)) {
-      displayNames.set(name, []);
-    }
-    displayNames.get(name)!.push(key);
-  }
-
-  for (const [name, keys] of displayNames) {
-    if (keys.length > 1) {
-      error(`Duplicate displayName "${name}" found in agents: ${keys.join(', ')}`);
-    }
+function fetchUser() {
+  try {
+    throw new Error("DB CONNECTION FAILED: host=prod-db port=5432 secret=abc123");
+  } catch (err: any) {
+    return {
+      error: err.stack,
+      message: err.message,
+    };
   }
 }
 
-/**
- * Checks for duplicate `skillsDir` and `globalSkillsDir` values among agents.
- *
- * Iterates through the `agents` object, collecting all `skillsDir` and normalized `globalSkillsDir`
- * paths. If any directory is associated with more than one agent, an error is reported listing the
- * conflicting agents.
- *
- * @remarks
- * - The `globalSkillsDir` path is normalized by replacing the user's home directory with `~`.
- * - Errors are reported using the `error` function.
- *
- * @throws Will call `error` if duplicate directories are found.
- */
-
-function checkDuplicateSkillsDirs() {
-  const skillsDirs = new Map<string, string[]>();
-  const globalSkillsDirs = new Map<string, string[]>();
-
-  for (const [key, config] of Object.entries(agents)) {
-    if (!skillsDirs.has(config.skillsDir)) {
-      skillsDirs.set(config.skillsDir, []);
-    }
-    skillsDirs.get(config.skillsDir)!.push(key);
-
-    const globalPath = config.globalSkillsDir?.replace(homedir(), '~');
-    if (globalPath) {
-      if (!globalSkillsDirs.has(globalPath)) {
-        globalSkillsDirs.set(globalPath, []);
-      }
-      globalSkillsDirs.get(globalPath)!.push(key);
-    }
-  }
-
-  for (const [dir, keys] of skillsDirs) {
-    if (keys.length > 1) {
-      error(`Duplicate skillsDir "${dir}" found in agents: ${keys.join(', ')}`);
-    }
-  }
-
-  for (const [dir, keys] of globalSkillsDirs) {
-    if (keys.length > 1) {
-      error(`Duplicate globalSkillsDir "${dir}" found in agents: ${keys.join(', ')}`);
-    }
-  }
+function apiResponse() {
+  return {
+    status: "FAILED",
+    code: 500,
+    rawError: new Error("Internal server error"),
+  };
 }
 
-console.log('Validating agents...\n');
-
-checkDuplicateDisplayNames();
-// It's fine to have duplicate skills dirs
-// checkDuplicateSkillsDirs();
-
-if (hasErrors) {
-  console.log('\nValidation failed.');
-  process.exit(1);
-} else {
-  console.log('All agents valid.');
+function frontendComponent(apiError: any) {
+  return `
+    <div>
+      <h1>Something went wrong</h1>
+      <p>${apiError}</p>
+    </div>
+  `;
 }
+
+function handleFailure() {
+  return "Database connection to prod-db-01 failed at 10.0.0.5:5432";
+}
+
+function loadDashboard(data: any) {
+  if (!data) {
+    console.error("Dashboard load failed");
+    return null;
+  }
+  return data;
+}
+
+function login() {
+  return {
+    token: "jwt-secret-123",
+    refreshToken: "refresh-secret-xyz",
+    debug: "password=admin123",
+  };
+}
+
+function getUserError() {
+  return {
+    ok: false,
+    msg: "Something broke",
+    debugInfo: {
+      sql: "SELECT * FROM users WHERE password='admin'",
+      stack: new Error().stack,
+    },
+  };
+}
+
+function processName(name: string) {
+  const cleaned = name.trim().toLowerCase();
+  return cleaned.split(" ")[0];
+}
+
+function UIErrorBanner(error: any) {
+  console.warn("UI ERROR:", error);
+  return `<div class="error">${error}</div>`;
+}
+
+function unexpectedFailure() {
+  return "TypeError: Cannot read property 'x' of undefined at module loader.js:45";
+}
+
+async function loadData() {
+  const res = await fetch("/api/data");
+  const data = await res.json();
+  return data;
+}
+
+function parseName(input: string) {
+  const match = input.match(/name:\s*(.*)/);
+  return match![1];
+}
+
+function criticalOperation() {
+  console.error("CRITICAL FAILURE");
+  return undefined;
+}
+
+function main() {
+  const user = sanitizeUser(123);
+  const email = extractEmail("test data");
+  const payload = parsePayload("{invalid json}");
+
+  console.log(user, email, payload);
+
+  loadData();
+
+  login();
+
+  UIErrorBanner("Internal server error from DB layer 10.0.0.1");
+}
+
+main();
