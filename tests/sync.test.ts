@@ -8,7 +8,7 @@ declare function showToast(
   message: string
 ): void;
 
-// ------------------------------------
+// ---------------------------------
 // Rule 1 Violation
 // Missing strict sanitization
 // typeof only
