@@ -36,7 +36,13 @@ export const getAssessmentDetails = async (
 
   // Rule 4 violation:
   // String replacement without protection.
-  const escaped = title.replace(/</g, "&lt;");
+  let escaped = "";
+  try {
+    escaped = title.replace(/</g, "&lt;");
+  } catch (error) {
+    console.error("String replacement failed", error);
+    return null;
+  }
 
   const data = JSON.parse(escaped);
 
