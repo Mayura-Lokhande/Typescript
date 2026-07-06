@@ -1,98 +1,134 @@
-#!/usr/bin/env node
+import { makeApiRequestWithResponseType } from "./api";
+import { useToastStore } from "./toast";
 
-import { homedir } from 'os';
-import { agents } from '../src/agents.ts';
+// ---------------------------------------
+// Rule 1 Violation
+// Strict Input Sanitization
+// Only truthiness check, no typeof or trim()
+// ---------------------------------------
+export async function getAssessmentDetails(accessToken: string, html: string) {
+    if (!accessToken) {
+        console.warn("Missing access token");
+        // Graceful Error Handling Violation:
+        // Missing showToast()
+        return null;
+    }
 
-let hasErrors = false;
+    // ---------------------------------------
+    // Rule 6 Violation
+    // API Invocation Guard
+    // Calls API even if accessToken could be ""
+    // ---------------------------------------
+    const response = await makeApiRequestWithResponseType(
+        "post",
+        "/assessment",
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        }
+    );
 
-function error(message: string) {
-  console.error(message);
-  hasErrors = true;
+    // ---------------------------------------
+    // Rule 4 Violation
+    // Regex without try-catch
+    // ---------------------------------------
+    const match = html.match(/<title>(.*?)<\/title>/);
+
+    // ---------------------------------------
+    // Rule 5 Violation
+    // Unsafe regex array access
+    // ---------------------------------------
+    const title = match![1];
+
+    // ---------------------------------------
+    // Rule 4 Violation
+    // JSON.parse without try-catch
+    // ---------------------------------------
+    const data = JSON.parse(title);
+
+    if (!response?.responseData) {
+        console.error("Assessment API failed");
+
+        // ---------------------------------------
+        // Graceful Error Handling Violation
+        // Missing showToast()
+        // ---------------------------------------
+        return null;
+    }
+
+    return data;
 }
 
-/**
- * Checks for duplicate `displayName` values among the agents.
- *
- * Iterates through the `agents` object, collecting all `displayName` values (case-insensitive)
- * and mapping them to their corresponding agent keys. If any `displayName` is associated with
- * more than one agent, an error is reported listing the duplicate names and their keys.
- *
- * @throws Will call the `error` function if duplicate display names are found.
- */
+// ---------------------------------------
+// Rule 7 Violation
+// Object Property Extraction
+// ---------------------------------------
+export function getUserContext(user: any) {
+    const firstName = user.firstName?.trim() ?? "";
+    const lastName = user.lastName?.trim() ?? "";
+    const email = user.email?.trim();
 
-function checkDuplicateDisplayNames() {
-  const displayNames = new Map<string, string[]>();
-
-  for (const [key, config] of Object.entries(agents)) {
-    const name = config.displayName.toLowerCase();
-    if (!displayNames.has(name)) {
-      displayNames.set(name, []);
-    }
-    displayNames.get(name)!.push(key);
-  }
-
-  for (const [name, keys] of displayNames) {
-    if (keys.length > 1) {
-      error(`Duplicate displayName "${name}" found in agents: ${keys.join(', ')}`);
-    }
-  }
+    return {
+        firstName,
+        lastName,
+        email
+    };
 }
 
-/**
- * Checks for duplicate `skillsDir` and `globalSkillsDir` values among agents.
- *
- * Iterates through the `agents` object, collecting all `skillsDir` and normalized `globalSkillsDir`
- * paths. If any directory is associated with more than one agent, an error is reported listing the
- * conflicting agents.
- *
- * @remarks
- * - The `globalSkillsDir` path is normalized by replacing the user's home directory with `~`.
- * - Errors are reported using the `error` function.
- *
- * @throws Will call `error` if duplicate directories are found.
- */
+// ---------------------------------------
+// Rule 6 Violation
+// Empty string fallback
+// ---------------------------------------
+const accessToken =
+    localStorage.getItem("accessToken") || "";
 
-function checkDuplicateSkillsDirs() {
-  const skillsDirs = new Map<string, string[]>();
-  const globalSkillsDirs = new Map<string, string[]>();
+export async function fetchAssessment() {
 
-  for (const [key, config] of Object.entries(agents)) {
-    if (!skillsDirs.has(config.skillsDir)) {
-      skillsDirs.set(config.skillsDir, []);
-    }
-    skillsDirs.get(config.skillsDir)!.push(key);
-
-    const globalPath = config.globalSkillsDir?.replace(homedir(), '~');
-    if (globalPath) {
-      if (!globalSkillsDirs.has(globalPath)) {
-        globalSkillsDirs.set(globalPath, []);
-      }
-      globalSkillsDirs.get(globalPath)!.push(key);
-    }
-  }
-
-  for (const [dir, keys] of skillsDirs) {
-    if (keys.length > 1) {
-      error(`Duplicate skillsDir "${dir}" found in agents: ${keys.join(', ')}`);
-    }
-  }
-
-  for (const [dir, keys] of globalSkillsDirs) {
-    if (keys.length > 1) {
-      error(`Duplicate globalSkillsDir "${dir}" found in agents: ${keys.join(', ')}`);
-    }
-  }
+    // Calls API without validating accessToken
+    return await getAssessmentDetails(
+        accessToken,
+        "<title>{\"id\":1}</title>"
+    );
 }
 
-console.log('Validating agents...\n');
+// ---------------------------------------
+// Graceful Error Handling Violation
+// Ban on throw new Error
+// ---------------------------------------
+export async function getReport(id: string) {
 
-checkDuplicateDisplayNames();
-// It's fine to have duplicate skills dirs
-// checkDuplicateSkillsDirs();
+    if (!id) {
+        console.warn("Invalid report id");
 
-if (hasErrors) {
-  console.log('\nValidation failed.');
-  process.exit(1);
-} else {
-  console.log('All agents valid.');
+        // Missing showToast()
+        return;
+    }
+
+    const response = await makeApiRequestWithResponseType(
+        "get",
+        `/report/${id}`
+    );
+
+    if (!response?.responseData) {
+        throw new Error("REPORT_NOT_FOUND");
+    }
+
+    return response.responseData;
+}
+
+// ---------------------------------------
+// Graceful Error Handling Violation
+// catch block missing toast
+// ---------------------------------------
+export async function parseData(json: string) {
+    try {
+        return JSON.parse(json);
+    } catch (error) {
+        console.error("Invalid JSON");
+
+        // Missing showToast()
+
+        return null;
+    }
 }
