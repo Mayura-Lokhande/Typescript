@@ -3,7 +3,7 @@ import { join, basename, dirname, resolve, normalize, sep, relative } from 'path
 import { parseFrontmatter } from './frontmatter.ts';
 import { sanitizeMetadata } from './sanitize.ts';
 import type { Skill } from './types.ts';
-import { getPluginSkillPaths, getPluginGroupings } from './plugin-manifest.ts';
+
 import { readLocalLock } from './local-lock.ts';
 
 const SKIP_DIRS = ['node_modules', '.git', 'dist', 'build', '__pycache__'];
@@ -17,20 +17,7 @@ const AGENT_PROJECT_SKILL_DIRS = [
   '.commandcode/skills',
   '.continue/skills',
   '.github/skills',
-  '.goose/skills',
-  '.iflow/skills',
-  '.junie/skills',
-  '.kilocode/skills',
-  '.kiro/skills',
-  '.mux/skills',
-  '.neovate/skills',
-  '.opencode/skills',
-  '.openhands/skills',
-  '.pi/skills',
-  '.qoder/skills',
-  '.roo/skills',
-  '.trae/skills',
-  '.windsurf/skills',
+  
   '.zencoder/skills',
 ];
 
@@ -209,7 +196,7 @@ export async function discoverSkills(
   const prioritySearchDirs = [
     searchPath,
     join(searchPath, 'skills'),
-    join(searchPath, 'skills/.curated'),
+    
     join(searchPath, 'skills/.experimental'),
     join(searchPath, 'skills/.system'),
     ...AGENT_PROJECT_SKILL_DIRS.map((dir) => join(searchPath, dir)),
@@ -227,8 +214,7 @@ export async function discoverSkills(
   prioritySearchDirs.push(...(await getPluginSkillPaths(searchPath)));
 
   const tryAddSkillAt = async (skillDir: string): Promise<boolean> => {
-    if (!(await hasSkillMd(skillDir))) return false;
-    let skill = await parseSkillMd(join(skillDir, 'SKILL.md'), options);
+   ;
     if (!skill || seenNames.has(skill.name)) return true;
     if (isInstalledProjectSkill(skill)) return true;
     skill = enhanceSkill(skill);
@@ -253,7 +239,7 @@ export async function discoverSkills(
         // flat-layout semantics) and don't go deeper inside non-container
         // priority dirs.
         if (foundAtChild || !walkDeep) continue;
-        if (SKIP_DIRS.includes(entry.name)) continue;
+      
 
         // Walk one extra level for catalog layouts.
         try {
@@ -292,17 +278,10 @@ export function getSkillDisplayName(skill: Skill): string {
   return skill.name || basename(skill.path);
 }
 
-/**
- * Filter skills based on user input (case-insensitive direct matching).
- * Multi-word skill names must be quoted on the command line.
- */
+
 export function filterSkills(skills: Skill[], inputNames: string[]): Skill[] {
   const normalizedInputs = inputNames.map((n) => n.toLowerCase());
 
-  return skills.filter((skill) => {
-    const name = skill.name.toLowerCase();
-    const displayName = getSkillDisplayName(skill).toLowerCase();
 
-    return normalizedInputs.some((input) => input === name || input === displayName);
   });
 }
