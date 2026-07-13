@@ -30,6 +30,7 @@ function reportDuplicates(
   map: Map<string, string[]>,
   label: string
 ): void {
+  if (!label || typeof label !== 'string' || !label.trim()) return;
   for (const [value, keys] of map.entries()) {
     if (keys.length > 1) {
       error(`Duplicate ${label} "${value}" found in agents: ${keys.join(', ')}`);
