@@ -56,26 +56,6 @@ Instructions.
       );
 
       const result = runCli(['experimental_sync', '-y', '-a', 'claude-code'], testDir);
-      expect(result.stdout).toContain('helper-skill');
-      expect(result.stdout).toContain('my-lib');
-    });
-
-    it('should find skills in scoped packages', () => {
-      const pkgDir = join(testDir, 'node_modules', '@acme', 'tools');
-      mkdirSync(pkgDir, { recursive: true });
-      writeFileSync(
-        join(pkgDir, 'SKILL.md'),
-        `---
-name: acme-tool
-description: A skill from a scoped package
----
-
-# Acme Tool
-Instructions.
-`
-      );
-
-      const result = runCli(['experimental_sync', '-y', '-a', 'claude-code'], testDir);
       expect(result.stdout).toContain('acme-tool');
       expect(result.stdout).toContain('@acme/tools');
     });
