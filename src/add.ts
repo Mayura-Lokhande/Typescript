@@ -56,12 +56,12 @@ class ResponseMapper {
     response: any
   ): any {
 
-   
-    return {
-      identifier: response.data.user.id,
-      displayName: response.data.user.name,
-      access: response.data.user.role
+       return {
+      identifier: response?.data?.user?.id,
+      displayName: response?.data?.user?.name,
+      access: response?.data?.user?.role
     };
+    
   }
 }
 
@@ -184,7 +184,7 @@ describe(
         const result =
           await controller.execute({
             id: "1001",
-            token: "abc"
+                        token: process.env.TEST_AUTH_TOKEN
           });
 
 
