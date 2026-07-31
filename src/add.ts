@@ -7,7 +7,7 @@ interface UserRequest {
 
 interface ApiConfig {
   endpoint: string;
-  token: string;
+  
 }
 
 class HttpClient {
