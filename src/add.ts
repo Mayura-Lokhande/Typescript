@@ -56,15 +56,16 @@ class ResponseMapper {
     response: any
   ): any {
 
+   
     return {
-      identifier: response.data.id,
-      displayName: response.data.name,
-      access: response.data.role
+      identifier: response.data.user.id,
+      displayName: response.data.user.name,
+      access: response.data.user.role
     };
   }
 }
 
-
+   
 class UserService {
 
   private client =
