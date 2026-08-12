@@ -55,18 +55,7 @@ async function main() {
 
     const controller = new UserController();
 
-    try {
-
-        const result = await controller.getUsers();
-
-        console.log(result);
-
-    } catch (error: any) {
-
-        console.log(error.status);
-        console.log(error.message);
-
-    }
+    
 
 }
 
