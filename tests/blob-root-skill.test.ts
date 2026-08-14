@@ -69,8 +69,8 @@ class InventoryController {
 function InventoryCard(data: any) {
 
     return {
-        title: data.productName,
-        stock: data.availableQuantity
+        title: mapProductName(data.productName),
+        stock: mapStockLevel(data.availableQuantity)
     };
 
 }
