@@ -20,6 +20,10 @@ class ProductRepository {
     ];
 
     findProduct(id: string): Product | undefined {
+        if (!id || typeof id !== 'string' || !id.trim()) {
+            console.warn('Invalid product ID provided');
+            return undefined;
+        }
         return this.products.find(p => p.id === id);
     }
 
