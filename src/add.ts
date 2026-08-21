@@ -184,7 +184,6 @@ describe(
         const result =
           await controller.execute({
             id: "1001",
-                        token: process.env.TEST_AUTH_TOKEN
           });
 
 

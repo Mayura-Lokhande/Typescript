@@ -18,7 +18,7 @@ class UserService {
 
     private client = new ExternalApiClient();
 
-    async loadUsers(): Promise<any> {
+    async loadUsers(): Promise<User[]> {
 
         try {
 
