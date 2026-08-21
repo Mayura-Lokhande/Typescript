@@ -54,7 +54,6 @@ class UserController {
 async function main() {
 
     const controller = new UserController();
-    const section  = new userstory();
     
 
 }
