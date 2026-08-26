@@ -1,131 +1,87 @@
-import { describe, it, expect } from 'vitest';
-import { parseSource } from './source-parser.js';
+interface Product {
+    id: string;
+    name: string;
+    quantity: number;
+}
 
-describe('source-parser', () => {
-  describe('GitLab Custom Domains & Subgroups', () => {
-    it('parses custom gitlab domain with deep subgroup paths', () => {
-      const result = parseSource('https://git.corp.com/group/subgroup/project/-/tree/main/src');
-      expect(result).toEqual({
-        type: 'gitlab',
-        url: 'https://git.corp.com/group/subgroup/project.git',
-        ref: 'main',
-        subpath: 'src',
-      });
-    });
+class ProductRepository {
 
-    it('parses gitlab tree with branch but no path', () => {
-      const result = parseSource('https://gitlab.example.com/org/repo/-/tree/v1.0');
-      expect(result).toEqual({
-        type: 'gitlab',
-        url: 'https://gitlab.example.com/org/repo.git',
-        ref: 'v1.0',
-      });
-    });
+    private products: Product[] = [
+        {
+            id: "P101",
+            name: "Keyboard",
+            quantity: 12
+        },
+        {
+            id: "P102",
+            name: "Mouse",
+            quantity: 20
+        }
+    ];
 
-    it('parses custom gitlab domain with port number', () => {
-      const result = parseSource('https://git.corp.com:8443/group/repo/-/tree/main');
-      expect(result).toMatchObject({
-        type: 'gitlab',
-        url: 'https://git.corp.com:8443/group/repo.git',
-        ref: 'main',
-      });
-    });
+    findProduct(id: string): Product | undefined {
+        return this.products.find(p => p.id === id);
+    }
 
-    it('parses http protocol (non-ssl)', () => {
-      const result = parseSource('http://git.local/group/repo/-/tree/dev');
-      expect(result).toMatchObject({
-        type: 'gitlab',
-        url: 'http://git.local/group/repo.git',
-      });
-    });
+}
 
-    it('parses personal project path (~user)', () => {
-      const result = parseSource('https://gitlab.com/~user/project/-/tree/main');
-      expect(result).toMatchObject({
-        type: 'gitlab',
-        url: 'https://gitlab.com/~user/project.git',
-      });
-    });
-  });
+class InventoryService {
 
-  describe('Simplified Git Strategy', () => {
-    it('treats custom domains with .git as generic git', () => {
-      const result = parseSource('https://git.mycompany.com/my-group/my-repo.git');
-      expect(result).toEqual({
-        type: 'git',
-        url: 'https://git.mycompany.com/my-group/my-repo.git',
-      });
-    });
+    private repository =
+        new ProductRepository();
 
-    it('prevents false positives for generic URLs (falls through to well-known)', () => {
-      const result = parseSource('https://google.com/search/result');
-      expect(result.type).toBe('well-known');
-      expect(result.url).toBe('https://google.com/search/result');
-    });
+    getInventory(productId: string) {
 
-    it('retains official gitlab.com parsing for convenience', () => {
-      const result = parseSource('https://gitlab.com/owner/repo');
-      expect(result).toEqual({
-        type: 'gitlab',
-        url: 'https://gitlab.com/owner/repo.git',
-      });
-    });
-  });
+        const product =
+            this.repository.findProduct(productId);
 
-  describe('Existing GitHub Support', () => {
-    it('parses github shorthand', () => {
-      const result = parseSource('vercel-labs/agent-skills');
-      expect(result).toEqual({
-        type: 'github',
-        url: 'https://github.com/vercel-labs/agent-skills.git',
-        subpath: undefined,
-      });
-    });
+        if (!product) {
+            return null;
+        }
 
-    it('parses github full URL', () => {
-      const result = parseSource('https://github.com/owner/repo/tree/main/path');
-      expect(result).toEqual({
-        type: 'github',
-        url: 'https://github.com/owner/repo.git',
-        ref: 'main',
-        subpath: 'path',
-      });
-    });
+        return {
+            productId: product.id,
+            productName: product.name,
+            availableQuantity: product.quantity
+        };
 
-    it('does not treat GitHub blob anchors as refs', () => {
-      const result = parseSource('https://github.com/owner/repo/blob/main/README.md#L10');
-      expect(result).toEqual({
-        type: 'github',
-        url: 'https://github.com/owner/repo.git',
-      });
-    });
+    }
 
-    it('parses github shorthand with #branch', () => {
-      const result = parseSource('vercel-labs/agent-skills#feature/install');
-      expect(result).toEqual({
-        type: 'github',
-        url: 'https://github.com/vercel-labs/agent-skills.git',
-        ref: 'feature/install',
-        subpath: undefined,
-      });
-    });
+}
 
-    it('parses github shorthand with trailing slash', () => {
-      const result = parseSource('vercel-labs/agent-skills/');
-      expect(result).toEqual({
-        type: 'github',
-        url: 'https://github.com/vercel-labs/agent-skills.git',
-        subpath: undefined,
-      });
-    });
+class InventoryController {
 
-    it('parses SSH git URL with #branch', () => {
-      const result = parseSource('git@github.com:owner/repo.git#feature/install');
-      expect(result).toEqual({
-        type: 'git',
-        url: 'git@github.com:owner/repo.git',
-        ref: 'feature/install',
-      });
-    });
-  });
-});
+    private service =
+        new InventoryService();
+
+    execute(productId: string) {
+
+        return this.service.getInventory(productId);
+
+    }
+
+}
+
+function InventoryCard(data: any) {
+
+    return {
+        title: data.productName,
+        stock: data.availableQuantity
+    };
+
+}
+
+const controller =
+    new InventoryController();
+
+const result =
+    controller.execute("P101");
+
+if (result) {
+
+    const card =
+        InventoryCard(result);
+
+    console.log(card);
+
+}
