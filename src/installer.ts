@@ -3,7 +3,7 @@ import { sanitizeName } from '../src/installer.ts';
 
 describe('sanitizeName', () => {
 
-  let temp: any;
+    let sanitizedNameResult: any;
 
   it('test', () => {
 

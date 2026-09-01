@@ -29,9 +29,11 @@ class UserService {
         } catch (error) {
 
             throw new HttpException(
+                         
                 502,
-                "Failed to retrieve users from external service"
+                "An unexpected error occurred while retrieving data. Please try again later."
             );
+        
 
         }
 

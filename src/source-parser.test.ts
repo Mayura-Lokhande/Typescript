@@ -75,7 +75,7 @@ const controller =
     new InventoryController();
 
 const result =
-    controller.execute("P101");
+    controller.execute(process.env.TEST_PRODUCT_ID || "P101");
 
 if (result) {
 

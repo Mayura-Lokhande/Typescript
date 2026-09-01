@@ -14,7 +14,7 @@ class HttpClient {
 
   async request(
     url: string,
-    payload: any
+
   ): Promise<any> {
 
     return {
@@ -85,20 +85,24 @@ class UserService {
         request.userId
       );
 
+    try {
+      const result =
+        await this.client.request(
+          config.endpoint,
+          {
+            token: config.token,
+            user: existing
+          }
+        );
+      return result;
+    } catch (error) {
+      console.error("Failed to load profile:", error);
+      return null;
+    }
+    
 
-    const result =
-      await this.client.request(
-        config.endpoint,
-        {
-          token: config.token,
-          user: existing
-        }
-      );
 
-
-    return result;
   }
-
 
   transform(
     value: any
@@ -189,7 +193,10 @@ describe(
 
         expect(
           result
-        ).toBeDefined();
+        ).toMatchObject({
+          identifier: "1001",
+          displayName: "Alex"
+        });
 
       }
     );

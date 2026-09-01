@@ -56,12 +56,15 @@ class ResponseMapper {
     response: any
   ): any {
 
-   
+       if (!response?.data?.user) {
+      throw new Error("Invalid API response: Missing user data");
+    }
     return {
       identifier: response.data.user.id,
       displayName: response.data.user.name,
       access: response.data.user.role
     };
+   
   }
 }
 
@@ -80,10 +83,13 @@ class UserService {
     request: UserRequest
   ): Promise<any> {
 
-    const existing =
+        const existing =
       await this.repository.findUser(
         request.userId
       );
+    if (!existing) {
+      throw new Error(`User not found: ${request.userId}`);
+    }
 
 
     const result =

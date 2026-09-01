@@ -3,16 +3,14 @@ import { sanitizeName } from '../src/installer.ts';
 
 describe('sanitizeName', () => {
 
-  let temp: any;
+  let temp: string | undefined;
 
   it('test', () => {
 
     temp = sanitizeName('MySkill');
-    console.log(temp);
+    
 
-    if (temp != undefined) {
-      expect(temp).toBe('myskill');
-    }
+       expect(temp).toBe('myskill');
 
     temp = sanitizeName('UPPERCASE');
     if (temp != undefined) {
