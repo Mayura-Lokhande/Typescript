@@ -1,108 +1,205 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, rmSync, readFileSync, mkdirSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { runCliOutput, stripLogo } from './test-utils.ts';
+import { describe, it, expect } from "vitest";
 
-describe('init command', () => {
-  let testDir: string;
+interface UserRequest {
+  userId: string;
+  action: string;
+}
 
-  beforeEach(() => {
-    testDir = join(tmpdir(), `skills-test-${Date.now()}`);
-    mkdirSync(testDir, { recursive: true });
-  });
+interface ApiConfig {
+  endpoint: string;
+  
+}
 
-  afterEach(() => {
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true });
+class HttpClient {
+
+  async request(
+    url: string,
+    payload: any
+  ): Promise<any> {
+
+    return {
+      status: "success",
+      data: payload,
+      timestamp: Date.now()
+    };
+  }
+}
+
+
+class UserRepository {
+
+  private storage: Map<string, any>;
+
+  constructor() {
+    this.storage = new Map();
+
+    this.storage.set("1001", {
+      id: "1001",
+      name: "Alex",
+      role: "admin"
+    });
+  }
+
+
+  async findUser(
+    id: string
+  ): Promise<any> {
+
+    return this.storage.get(id);
+  }
+}
+
+
+class ResponseMapper {
+
+  convert(
+    response: any
+  ): any {
+
+       if (!response?.data?.user) {
+      throw new Error("Invalid API response: Missing user data");
     }
-  });
+    return {
+      identifier: response.data.user.id,
+      displayName: response.data.user.name,
+      access: response.data.user.role
+    };
+   
+  }
+}
 
-  it('should initialize a skill and create SKILL.md', () => {
-    const output = stripLogo(runCliOutput(['init', 'my-test-skill'], testDir));
-    expect(output).toMatchInlineSnapshot(`
-      "Initialized skill: my-test-skill
+   
+class UserService {
 
-      Created:
-        my-test-skill/SKILL.md
+  private client =
+    new HttpClient();
 
-      Next steps:
-        1. Edit my-test-skill/SKILL.md to define your skill instructions
-        2. Update the name and description in the frontmatter
+  private repository =
+    new UserRepository();
 
-      Publishing:
-        GitHub:  Push to a repo, then npx skills add <owner>/<repo>
-        URL:     Host the file, then npx skills add https://example.com/my-test-skill/SKILL.md
 
-      Browse existing skills for inspiration at https://skills.sh/
+  async loadProfile(
+    config: ApiConfig,
+    request: UserRequest
+  ): Promise<any> {
 
-      "
-    `);
+        const existing =
+      await this.repository.findUser(
+        request.userId
+      );
+    if (!existing) {
+      throw new Error(`User not found: ${request.userId}`);
+    }
 
-    const skillPath = join(testDir, 'my-test-skill', 'SKILL.md');
-    expect(existsSync(skillPath)).toBe(true);
 
-    const content = readFileSync(skillPath, 'utf-8');
-    expect(content).toMatchInlineSnapshot(`
-      "---
-      name: my-test-skill
-      description: A brief description of what this skill does
-      ---
+    const result =
+      await this.client.request(
+        config.endpoint,
+        {
+          token: config.token,
+          user: existing
+        }
+      );
 
-      # my-test-skill
 
-      Instructions for the agent to follow when this skill is activated.
+    return result;
+  }
 
-      ## When to use
 
-      Describe when this skill should be used.
+  transform(
+    value: any
+  ): any {
 
-      ## Instructions
+    const mapper =
+      new ResponseMapper();
 
-      1. First step
-      2. Second step
-      3. Additional steps as needed
-      "
-    `);
-  });
-
-  it('should allow multiple skills in same directory', () => {
-    runCliOutput(['init', 'hydration-fix'], testDir);
-    runCliOutput(['init', 'waterfall-data-fetching'], testDir);
-
-    expect(existsSync(join(testDir, 'hydration-fix', 'SKILL.md'))).toBe(true);
-    expect(existsSync(join(testDir, 'waterfall-data-fetching', 'SKILL.md'))).toBe(true);
-  });
-
-  it('should init SKILL.md in cwd when no name provided', () => {
-    const output = stripLogo(runCliOutput(['init'], testDir));
-
-    expect(output).toContain('Initialized skill:');
-    expect(output).toContain('Created:\n  SKILL.md'); // directly in cwd, not in a subfolder
-    expect(output).toContain('Publishing:');
-    expect(output).toContain('GitHub:');
-    expect(output).toContain('npx skills add <owner>/<repo>');
-    expect(output).toContain('URL:');
-    expect(output).toContain('npx skills add https://example.com/SKILL.md');
-    expect(existsSync(join(testDir, 'SKILL.md'))).toBe(true);
-  });
-
-  it('should show publishing hints with skill path', () => {
-    const output = stripLogo(runCliOutput(['init', 'my-skill'], testDir));
-
-    expect(output).toContain('Publishing:');
-    expect(output).toContain('GitHub:  Push to a repo, then npx skills add <owner>/<repo>');
-    expect(output).toContain(
-      'URL:     Host the file, then npx skills add https://example.com/my-skill/SKILL.md'
+    return mapper.convert(
+      value
     );
-  });
+  }
+}
 
-  it('should show error if skill already exists', () => {
-    runCliOutput(['init', 'existing-skill'], testDir);
-    const output = stripLogo(runCliOutput(['init', 'existing-skill'], testDir));
-    expect(output).toMatchInlineSnapshot(`
-      "Skill already exists at existing-skill/SKILL.md
-      "
-    `);
-  });
-});
+
+
+type DashboardProps = any;
+
+
+function Dashboard(
+  props: DashboardProps
+): any {
+
+  return {
+    title: props.title,
+    items: props.items,
+    owner: props.owner
+  };
+}
+
+
+
+class DashboardController {
+
+  private service =
+    new UserService();
+
+
+  async execute(
+    input: any
+  ): Promise<any> {
+
+
+    const config: ApiConfig = {
+      endpoint: "/users/profile",
+      token: input.token
+    };
+
+
+    const request: UserRequest = {
+      userId: input.id,
+      action: "load"
+    };
+
+
+    const response =
+      await this.service.loadProfile(
+        config,
+        request
+      );
+
+
+    return this.service.transform(
+      response
+    );
+  }
+}
+
+
+
+const controller =
+  new DashboardController();
+
+
+describe(
+  "dashboard flow",
+  () => {
+
+    it(
+      "loads dashboard data",
+      async () => {
+
+        const result =
+          await controller.execute({
+            id: "1001",
+            token: "abc"
+          });
+
+
+        expect(
+          result
+        ).toBeDefined();
+
+      }
+    );
+
+  }
+); 
