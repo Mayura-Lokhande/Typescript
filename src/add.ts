@@ -12,16 +12,16 @@ interface ApiConfig {
 
 class HttpClient {
 
-    async request<T, R>(
+  async request<T, R>(
     url: string,
     payload: T
-  ): Promise<R>  
- {
-      status: "success",
+  ): Promise<R> {
+    return {
+      code: "REQUEST_SUCCESS",
+      message: "Operation completed successfully",
       data: payload.user,
       timestamp: Date.now()
     };
-     
   }
 }
 
