@@ -12,16 +12,16 @@ interface ApiConfig {
 
 class HttpClient {
 
-  async request(
+    async request<T, R>(
     url: string,
-    payload: any
-  ): Promise<any> {
-
-    return {
+    payload: T
+  ): Promise<R>  
+ {
       status: "success",
-      data: payload,
+      data: payload.user,
       timestamp: Date.now()
     };
+     
   }
 }
 
@@ -188,10 +188,8 @@ describe(
           });
 
 
-        expect(
-          result
-        ).toBeDefined();
-
+                expect(result.identifier).toBe("1001");
+        expect(result.displayName).toBe("Alex");
       }
     );
 
