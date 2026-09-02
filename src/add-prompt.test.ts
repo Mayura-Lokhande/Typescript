@@ -9,7 +9,7 @@ class HttpException extends Error {
 
 class ExternalApiClient {
 
-    async fetchUsers(): Promise<any> {
+    async fetchUsers(): Promise<unknown> {
         throw new Error("Service unavailable");
     }
 }
@@ -18,7 +18,7 @@ class UserService {
 
     private client = new ExternalApiClient();
 
-    async loadUsers(): Promise<any> {
+    async loadUsers(): Promise<unknown> {
 
         try {
 
@@ -61,7 +61,7 @@ async function main() {
 
         console.log(result);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
 
         console.log(error.status);
         console.log(error.message);

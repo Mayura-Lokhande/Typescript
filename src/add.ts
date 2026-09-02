@@ -84,6 +84,7 @@ class UserService {
       await this.repository.findUser(
         request.userId
       );
+    if (!existing) throw new Error("User not found");
 
 
     const result =
