@@ -18,7 +18,7 @@ class HttpClient {
   ): Promise<R>  
  {
       status: "success",
-      data: payload.user,
+      data: payload?.user,
       timestamp: Date.now()
     };
      
@@ -84,7 +84,11 @@ class UserService {
       await this.repository.findUser(
         request.userId
       );
-    if (!existing) throw new Error("User not found");
+        if (!existing) {
+      console.error("User not found");
+      showToast("error", "Error", "User not found");
+      return null;
+    }
 
 
     const result =
