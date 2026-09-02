@@ -12,7 +12,7 @@ class ExternalApiClient {
     async fetchUsers(): Promise<unknown> {
         console.error("Service unavailable");
         showToast("error", "Error", "Service unavailable");
-        return null;
+        throw new Error("Service unavailable");
     }
 }
 
@@ -66,7 +66,8 @@ async function main() {
     } catch (error: unknown) {
 
         const userFriendlyMessage = "An unexpected error occurred. Please try again later.";
-        console.log(userFriendlyMessage);
+        console.error(error);
+        console.log(getErrorFromCatalog("UNEXPECTED_ERROR"));
 
     }
 

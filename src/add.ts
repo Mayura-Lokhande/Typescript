@@ -84,7 +84,7 @@ class UserService {
       await this.repository.findUser(
         request.userId
       );
-        if (!existing) {
+            if (!existing || typeof existing !== 'object') {
       console.error("User not found");
       showToast("error", "Error", "User not found");
       return null;
