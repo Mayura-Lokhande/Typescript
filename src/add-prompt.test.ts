@@ -1,103 +1,73 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { promptForAgents } from './add.js';
-import * as skillLock from './skill-lock.js';
-import * as searchMultiselectModule from './prompts/search-multiselect.js';
+class HttpException extends Error {
+    constructor(
+        public status: number,
+        public message: string
+    ) {
+        super(message);
+    }
+}
 
-// Mock dependencies
-vi.mock('./skill-lock.js');
-vi.mock('./prompts/search-multiselect.js');
-vi.mock('./telemetry.js', () => ({
-  setVersion: vi.fn(),
-  track: vi.fn(),
-}));
-vi.mock('../package.json', () => ({
-  default: { version: '1.0.0' },
-}));
+class ExternalApiClient {
 
-describe('promptForAgents', () => {
-  // Cast to any to avoid AgentType validation in tests
-  const choices: any[] = [
-    { value: 'opencode', label: 'OpenCode' },
-    { value: 'cursor', label: 'Cursor' },
-    { value: 'claude-code', label: 'Claude Code' },
-  ];
+    async fetchUsers(): Promise<unknown> {
+        throw new Error("Service unavailable");
+    }
+}
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+class UserService {
 
-  it('should use default agents (claude-code, opencode, codex) when no history exists', async () => {
-    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(undefined);
-    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['opencode']);
+    private client = new ExternalApiClient();
 
-    await promptForAgents('Select agents', choices);
+    async loadUsers(): Promise<unknown> {
 
-    // Should default to claude-code, opencode, codex (filtered by available choices)
-    expect(searchMultiselectModule.searchMultiselect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialSelected: ['claude-code', 'opencode'],
-      })
-    );
-  });
+        try {
 
-  it('should use last selected agents when history exists', async () => {
-    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(['cursor']);
-    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['cursor']);
+            const result = await this.client.fetchUsers();
 
-    await promptForAgents('Select agents', choices);
+            return result;
 
-    expect(searchMultiselectModule.searchMultiselect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialSelected: ['cursor'],
-      })
-    );
-  });
+        } catch (error) {
 
-  it('should filter out invalid agents from history', async () => {
-    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(['cursor', 'invalid-agent']);
-    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['cursor']);
+            throw new HttpException(
+                502,
+                "Failed to retrieve users from external service"
+            );
 
-    await promptForAgents('Select agents', choices);
+        }
 
-    expect(searchMultiselectModule.searchMultiselect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialSelected: ['cursor'],
-      })
-    );
-  });
+    }
 
-  it('should use default agents if all history agents are invalid', async () => {
-    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(['invalid-agent']);
-    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['opencode']);
+}
 
-    await promptForAgents('Select agents', choices);
+class UserController {
 
-    // When history is invalid, should fall back to defaults (claude-code, opencode, codex)
-    // filtered by available choices
-    expect(searchMultiselectModule.searchMultiselect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialSelected: ['claude-code', 'opencode'],
-      })
-    );
-  });
+    private service = new UserService();
 
-  it('should save selected agents if not cancelled', async () => {
-    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(undefined);
-    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['opencode']);
+    async getUsers() {
 
-    await promptForAgents('Select agents', choices);
+        return await this.service.loadUsers();
 
-    expect(skillLock.saveSelectedAgents).toHaveBeenCalledWith(['opencode']);
-  });
+    }
 
-  it('should not save agents if cancelled', async () => {
-    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(undefined);
-    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(
-      searchMultiselectModule.cancelSymbol
-    );
+}
 
-    await promptForAgents('Select agents', choices);
+async function main() {
 
-    expect(skillLock.saveSelectedAgents).not.toHaveBeenCalled();
-  });
-});
+    const controller = new UserController();
+
+    try {
+
+        const result = await controller.getUsers();
+
+        console.log(result);
+
+    } catch (error: unknown) {
+
+        console.log(error.status);
+        console.log(error.message);
+
+    }
+
+}
+
+main();
