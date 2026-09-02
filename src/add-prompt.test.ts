@@ -10,6 +10,8 @@ class HttpException extends Error {
 class ExternalApiClient {
 
     async fetchUsers(): Promise<unknown> {
+        console.error("Service unavailable");
+        showToast("error", "Error", "Service unavailable");
         throw new Error("Service unavailable");
     }
 }
@@ -63,8 +65,9 @@ async function main() {
 
     } catch (error: unknown) {
 
-        console.log(error.status);
-        console.log(error.message);
+        const userFriendlyMessage = "An unexpected error occurred. Please try again later.";
+        console.error(error);
+        console.log(getErrorFromCatalog("UNEXPECTED_ERROR"));
 
     }
 
