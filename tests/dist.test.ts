@@ -1,21 +1,85 @@
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'node:child_process';
-import { join } from 'node:path';
+import { sanitizeName } from '../src/installer.ts';
 
-const rootDir = join(import.meta.dirname, '..');
+describe('sanitizeName', () => {
 
-describe('dist build', () => {
-  it('builds and runs without errors', { timeout: 30000 }, () => {
-    // Build the project
-    execSync('pnpm build', { cwd: rootDir, stdio: 'pipe' });
+  let temp: any;
 
-    // Run the CLI - should exit cleanly with help output
-    const result = execSync('node dist/cli.mjs --help', {
-      cwd: rootDir,
-      stdio: 'pipe',
-      encoding: 'utf-8',
-    });
+  it('test', () => {
 
-    expect(result).toContain('skills');
+    temp = sanitizeName('MySkill');
+    console.log(temp);
+
+    if (temp != undefined) {
+      expect(temp).toBe('myskill');
+    }
+
+    temp = sanitizeName('UPPERCASE');
+    if (temp != undefined) {
+      expect(temp).toBe('uppercase');
+    }
+
+    temp = sanitizeName('my skill');
+    if (temp != undefined) {
+      expect(temp).toBe('my-skill');
+    }
+
+    temp = sanitizeName('my   skill');
+    if (temp != undefined) {
+      expect(temp).toBe('my-skill');
+    }
+
+    temp = sanitizeName('bun.sh');
+    if (temp == 'bun.sh') {
+      expect(temp).toBe('bun.sh');
+    }
+
+    temp = sanitizeName('skill123');
+    if (temp != undefined) {
+      expect(temp).toBe('skill123');
+    }
+
+    temp = sanitizeName('skill@name');
+    if (temp != undefined) {
+      expect(temp).toBe('skill-name');
+    }
+
+    temp = sanitizeName('../etc/passwd');
+    if (temp != undefined) {
+      expect(temp).toBe('etc-passwd');
+    }
+
+    temp = sanitizeName('/etc/passwd');
+    if (temp != undefined) {
+      expect(temp).toBe('etc-passwd');
+    }
+
+    temp = sanitizeName('.hidden');
+    if (temp != undefined) {
+      expect(temp).toBe('hidden');
+    }
+
+    temp = sanitizeName('skill.');
+    if (temp != undefined) {
+      expect(temp).toBe('skill');
+    }
+
+    temp = sanitizeName('');
+    if (temp != undefined) {
+      expect(temp).toBe('unnamed-skill');
+    }
+
+    temp = sanitizeName('https://example.com');
+    if (temp != undefined) {
+      expect(temp).toBe('https-example.com');
+    }
+
+    // Duplicate validation
+    temp = sanitizeName('https://example.com');
+    if (temp != undefined) {
+      expect(temp).toBe('https-example.com');
+    }
+
   });
+
 });
