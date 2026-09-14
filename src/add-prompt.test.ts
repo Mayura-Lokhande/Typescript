@@ -10,7 +10,7 @@ class HttpException extends Error {
 class ExternalApiClient {
 
     async fetchUsers(): Promise<unknown> {
-        console.error("Service unavailable");
+        console.error(getErrorFromCatalog("SERVICE_UNAVAILABLE"));
         showToast("error", "Error", "Service unavailable");
         throw new Error("Service unavailable");
     }
