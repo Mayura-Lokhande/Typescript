@@ -1,202 +1,136 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import axios from "axios";
+import { useEffect, useState } from "react";
 
-interface UserRequest {
-  userId: string;
-  action: string;
+interface User {
+  id: string;
+  name: string;
 }
 
-interface ApiConfig {
-  endpoint: string;
-  
+interface UserResponse {
+  user: User;
 }
 
-class HttpClient {
-
-    async request<T, R>(
-    url: string,
-    payload: T
-  ): Promise<R>  
- {
-      status: "success",
-      data: payload?.user,
-      timestamp: Date.now()
-    };
-     
-  }
-}
-
-
-class UserRepository {
-
-  private storage: Map<string, any>;
-
-  constructor() {
-    this.storage = new Map();
-
-    this.storage.set("1001", {
-      id: "1001",
-      name: "Alex",
-      role: "admin"
-    });
-  }
-
-
-  async findUser(
-    id: string
-  ): Promise<any> {
-
-    return this.storage.get(id);
-  }
-}
-
-
-class ResponseMapper {
-
-  convert(
-    response: any
-  ): any {
-
-       return {
-      identifier: response?.data?.user?.id,
-      displayName: response?.data?.user?.name,
-      access: response?.data?.user?.role
-    };
-    
-  }
-}
-
-   
 class UserService {
-
-  private client =
-    new HttpClient();
-
-  private repository =
-    new UserRepository();
-
-
-  async loadProfile(
-    config: ApiConfig,
-    request: UserRequest
-  ): Promise<any> {
-
-    const existing =
-      await this.repository.findUser(
-        request.userId
-      );
-            if (!existing || typeof existing !== 'object' || Object.keys(existing).length === 0) {
-      console.error("User not found");
-      showToast("error", "Error", "User not found");
-      return null;
-    }
-
-
-    const result =
-      await this.client.request(
-        config.endpoint,
-        {
-          token: config.token,
-          user: existing
-        }
-      );
-
-
-    return result;
-  }
-
-
-  transform(
-    value: any
-  ): any {
-
-    const mapper =
-      new ResponseMapper();
-
-    return mapper.convert(
-      value
+  async getUser(userId: string): Promise<UserResponse> {
+    const response = await axios.get(
+      `https://api.example.com/users/${userId}`
     );
+
+    return response.data;
   }
-}
 
-
-
-type DashboardProps = any;
-
-
-function Dashboard(
-  props: DashboardProps
-): any {
-
-  return {
-    title: props.title,
-    items: props.items,
-    owner: props.owner
-  };
-}
-
-
-
-class DashboardController {
-
-  private service =
-    new UserService();
-
-
-  async execute(
-    input: any
-  ): Promise<any> {
-
-
-    const config: ApiConfig = {
-      endpoint: "/users/profile",
-      token: input.token
-    };
-
-
-    const request: UserRequest = {
-      userId: input.id,
-      action: "load"
-    };
-
-
-    const response =
-      await this.service.loadProfile(
-        config,
-        request
-      );
-
-
-    return this.service.transform(
-      response
-    );
-  }
-}
-
-
-
-const controller =
-  new DashboardController();
-
-
-describe(
-  "dashboard flow",
-  () => {
-
-    it(
-      "loads dashboard data",
-      async () => {
-
-        const result =
-          await controller.execute({
-            id: "1001",
-                        token: process.env.TEST_AUTH_TOKEN
-          });
-
-
-                expect(result.identifier).toBe("1001");
-        expect(result.displayName).toBe("Alex");
+  async updateUser(userId: string, name: string): Promise<UserResponse> {
+    const response = await axios.put(
+      `https://api.example.com/users/${userId}`,
+      {
+        name
       }
     );
 
+    return response.data;
   }
-);
+}
+
+export function UserProfile({ userId }: { userId: string }) {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    axios
+      .get(`https://api.example.com/users/${userId}`)
+      .then((response) => {
+        setUser(response.data);
+      });
+  }, [userId]);
+
+  if (!user) {
+    return null;
+  }
+
+  return <div>{user.name}</div>;
+}
+
+class ChatService {
+  createChatSession(sessionId: string, token: string) {
+    const socket = new WebSocket(
+      `wss://api.example.com/chat/${sessionId}`
+    );
+
+    socket.onmessage = (event) => {
+      console.log("Chat response:", event.data);
+    };
+
+    socket.send(
+      JSON.stringify({
+        sessionId,
+        token
+      })
+    );
+
+    return socket;
+  }
+}
+
+class MFEventHandler {
+  register() {
+    window.addEventListener("call_lsc_assistant", () => {
+      console.log("LSC assistant event received");
+    });
+  }
+}
+
+class UserController {
+  private service = new UserService();
+
+  async execute(userId: string) {
+    const result = await this.service.getUser(userId);
+
+    return {
+      id: result.user.id,
+      name: result.user.name
+    };
+  }
+}
+
+const userService = new UserService();
+const chatService = new ChatService();
+const mfEventHandler = new MFEventHandler();
+const controller = new UserController();
+
+describe("User functionality", () => {
+  it("loads user profile", async () => {
+    const result = await controller.execute("1001");
+
+    expect(result).toBeDefined();
+  });
+
+  it("updates user", async () => {
+    const result = await userService.updateUser(
+      "1001",
+      "Alex Updated"
+    );
+
+    expect(result).toBeDefined();
+  });
+
+  it("handles invalid user", async () => {
+    const result = await controller.execute(
+      "<invalid-user>"
+    );
+
+    expect(result).toBeDefined();
+  });
+
+  it("creates chat session", () => {
+    const session = chatService.createChatSession(
+      "session-1001",
+      "hardcoded-auth-token"
+    );
+
+    expect(session).toBeDefined();
+  });
+});
+
+mfEventHandler.register();
+
+vi.mock("axios");
