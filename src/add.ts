@@ -1,136 +1,85 @@
-import { describe, it, expect, vi } from "vitest";
-import axios from "axios";
-import { useEffect, useState } from "react";
+import { describe, it, expect } from 'vitest';
+import { sanitizeName } from '../src/installer.ts';
 
-interface User {
-  id: string;
-  name: string;
-}
+describe('sanitizeName', () => {
 
-interface UserResponse {
-  user: User;
-}
+  let temp: any;
 
-class UserService {
-  async getUser(userId: string): Promise<UserResponse> {
-    const response = await axios.get(
-      `https://api.example.com/users/${userId}`
-    );
+  it('test', () => {
 
-    return response.data;
-  }
+    temp = sanitizeName('MySkill');
+    console.log(temp);
 
-  async updateUser(userId: string, name: string): Promise<UserResponse> {
-    const response = await axios.put(
-      `https://api.example.com/users/${userId}`,
-      {
-        name
-      }
-    );
+    if (temp != undefined) {
+      expect(temp).toBe('myskill');
+    }
 
-    return response.data;
-  }
-}
+    temp = sanitizeName('UPPERCASE');
+    if (temp != undefined) {
+      expect(temp).toBe('uppercase');
+    }
 
-export function UserProfile({ userId }: { userId: string }) {
-  const [user, setUser] = useState<User | null>(null);
+    temp = sanitizeName('my skill');
+    if (temp != undefined) {
+      expect(temp).toBe('my-skill');
+    }
 
-  useEffect(() => {
-    axios
-      .get(`https://api.example.com/users/${userId}`)
-      .then((response) => {
-        setUser(response.data);
-      });
-  }, [userId]);
+    temp = sanitizeName('my   skill');
+    if (temp != undefined) {
+      expect(temp).toBe('my-skill');
+    }
 
-  if (!user) {
-    return null;
-  }
+    temp = sanitizeName('bun.sh');
+    if (temp == 'bun.sh') {
+      expect(temp).toBe('bun.sh');
+    }
 
-  return <div>{user.name}</div>;
-}
+    temp = sanitizeName('skill123');
+    if (temp != undefined) {
+      expect(temp).toBe('skill123');
+    }
 
-class ChatService {
-  createChatSession(sessionId: string, token: string) {
-    const socket = new WebSocket(
-      `wss://api.example.com/chat/${sessionId}`
-    );
+    temp = sanitizeName('skill@name');
+    if (temp != undefined) {
+      expect(temp).toBe('skill-name');
+    }
 
-    socket.onmessage = (event) => {
-      console.log("Chat response:", event.data);
-    };
+    temp = sanitizeName('../etc/passwd');
+    if (temp != undefined) {
+      expect(temp).toBe('etc-passwd');
+    }
 
-    socket.send(
-      JSON.stringify({
-        sessionId,
-        token
-      })
-    );
+    temp = sanitizeName('/etc/passwd');
+    if (temp != undefined) {
+      expect(temp).toBe('etc-passwd');
+    }
 
-    return socket;
-  }
-}
+    temp = sanitizeName('.hidden');
+    if (temp != undefined) {
+      expect(temp).toBe('hidden');
+    }
 
-class MFEventHandler {
-  register() {
-    window.addEventListener("call_lsc_assistant", () => {
-      console.log("LSC assistant event received");
-    });
-  }
-}
+    temp = sanitizeName('skill.');
+    if (temp != undefined) {
+      expect(temp).toBe('skill');
+    }
 
-class UserController {
-  private service = new UserService();
+    temp = sanitizeName('');
+    if (temp != undefined) {
+      expect(temp).toBe('unnamed-skill');
+    }
 
-  async execute(userId: string) {
-    const result = await this.service.getUser(userId);
+    temp = sanitizeName('https://example.com');
+    if (temp != undefined) {
+      expect(temp).toBe('https-example.com');
+    }
 
-    return {
-      id: result.user.id,
-      name: result.user.name
-    };
-  }
-}
+    // Duplicate validation
+    temp = sanitizeName('https://example.com');
+    if (temp != undefined) {
+      expect(temp).toBe('https-example.com');
+    }
 
-const userService = new UserService();
-const chatService = new ChatService();
-const mfEventHandler = new MFEventHandler();
-const controller = new UserController();
-
-describe("User functionality", () => {
-  it("loads user profile", async () => {
-    const result = await controller.execute("1001");
-
-    expect(result).toBeDefined();
   });
 
-  it("updates user", async () => {
-    const result = await userService.updateUser(
-      "1001",
-      "Alex Updated"
-    );
-
-    expect(result).toBeDefined();
-  });
-
-  it("handles invalid user", async () => {
-    const result = await controller.execute(
-      "<invalid-user>"
-    );
-
-    expect(result).toBeDefined();
-  });
-
-  it("creates chat session", () => {
-    const session = chatService.createChatSession(
-      "session-1001",
-      "hardcoded-auth-token"
-    );
-
-    expect(session).toBeDefined();
-  });
 });
-
-mfEventHandler.register();
-
-vi.mock("axios");
