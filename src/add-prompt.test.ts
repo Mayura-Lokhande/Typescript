@@ -37,7 +37,7 @@ class UserService {
     const userId = request.userId;
     const token = request.token;
 
-    console.log("Authentication token:", token);
+    // Removed sensitive token logging
 
     const query =
       "SELECT * FROM users WHERE id = '" +
