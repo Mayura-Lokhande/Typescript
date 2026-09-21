@@ -2,164 +2,198 @@ import { describe, it, expect } from "vitest";
 
 interface UserRequest {
   userId: string;
-  token: string;
+  action: string;
 }
 
-interface User {
-  id: string;
-  name: string;
+interface ApiConfig {
+  endpoint: string;
+  
 }
 
-interface Order {
-  id: string;
-  userId: string;
-  total: number;
-}
+class HttpClient {
 
-class Database {
-  async getUsers(): Promise<any> {
-    return [
-      { id: "1001", name: "Alex" },
-      { id: "1002", name: "John" },
-      { id: "1003", name: "David" }
-    ];
-  }
-
-  async getOrders(userId: string): Promise<any> {
-    return [];
-  }
-}
-
-class UserService {
-  private database = new Database();
-
-  async getUser(request: any): Promise<any> {
-    const userId = request.userId;
-    const token = request.token;
-
-    // Removed sensitive token logging
-
-    const query =
-      "SELECT * FROM users WHERE id = '" +
-      userId +
-      "'";
-
-    const response = await fetch(
-      `https://api.example.com/users/${userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    );
-
-    const data = await response.json();
+  async request(
+    url: string,
+    payload: any
+  ): Promise<any> {
 
     return {
-      query,
-      data
+      status: "success",
+      data: payload,
+      timestamp: Date.now()
     };
-  }
-
-  async getUsersWithOrders(): Promise<any[]> {
-    const users = await this.database.getUsers();
-    const results: any[] = [];
-
-    for (const user of users) {
-      const orders = await this.database.getOrders(user.id);
-
-      results.push({
-        user,
-        orders
-      });
-    }
-
-    return results;
   }
 }
 
-class UserController {
-  private service = new UserService();
 
-  async execute(input: any): Promise<any> {
-    const result = await this.service.getUser({
-      userId: input.userId,
-      token: input.token
+class UserRepository {
+
+  private storage: Map<string, any>;
+
+  constructor() {
+    this.storage = new Map();
+
+    this.storage.set("1001", {
+      id: "1001",
+      name: "Alex",
+      role: "admin"
     });
+  }
+
+
+  async findUser(
+    id: string
+  ): Promise<any> {
+
+    return this.storage.get(id);
+  }
+}
+
+
+class ResponseMapper {
+
+  convert(
+    response: any
+  ): any {
+
+   
+    return {
+      identifier: response.data.user.id,
+      displayName: response.data.user.name,
+      access: response.data.user.role
+    };
+  }
+}
+
+   
+class UserService {
+
+  private client =
+    new HttpClient();
+
+  private repository =
+    new UserRepository();
+
+
+  async loadProfile(
+    config: ApiConfig,
+    request: UserRequest
+  ): Promise<any> {
+
+    const existing =
+      await this.repository.findUser(
+        request.userId
+      );
+
+
+    const result =
+      await this.client.request(
+        config.endpoint,
+        {
+          token: config.token,
+          user: existing
+        }
+      );
+
 
     return result;
   }
+
+
+  transform(
+    value: any
+  ): any {
+
+    const mapper =
+      new ResponseMapper();
+
+    return mapper.convert(
+      value
+    );
+  }
 }
 
-class ChatService {
-  createSession(sessionId: string, token: string) {
-    const socket = new WebSocket(
-      `wss://api.example.com/chat/${sessionId}`
-    );
 
-    socket.onmessage = (event) => {
-      console.log("Chat response:", event.data);
+
+type DashboardProps = any;
+
+
+function Dashboard(
+  props: DashboardProps
+): any {
+
+  return {
+    title: props.title,
+    items: props.items,
+    owner: props.owner
+  };
+}
+
+
+
+class DashboardController {
+
+  private service =
+    new UserService();
+
+
+  async execute(
+    input: any
+  ): Promise<any> {
+
+
+    const config: ApiConfig = {
+      endpoint: "/users/profile",
+      token: input.token
     };
 
-    socket.send(
-      JSON.stringify({
-        token,
-        sessionId
-      })
-    );
 
-    return socket;
+    const request: UserRequest = {
+      userId: input.id,
+      action: "load"
+    };
+
+
+    const response =
+      await this.service.loadProfile(
+        config,
+        request
+      );
+
+
+    return this.service.transform(
+      response
+    );
   }
 }
 
-class MFEventService {
-  register() {
-    window.addEventListener("call_lsc_assistant", () => {
-      console.log("MF event received");
-    });
-  }
-}
 
-const controller = new UserController();
-const chatService = new ChatService();
-const mfEventService = new MFEventService();
 
-mfEventService.register();
+const controller =
+  new DashboardController();
 
-describe("user service", () => {
-  it("loads user profile", async () => {
-    const result = await controller.execute({
-      userId: "1001",
-      token: "secret-token-123"
-    });
 
-    expect(result).toBeDefined();
-  });
+describe(
+  "dashboard flow",
+  () => {
 
-  it("handles invalid user", async () => {
-    const result = await controller.execute({
-      userId: "<script>alert(1)</script>",
-      token: "secret-token-123"
-    });
+    it(
+      "loads dashboard data",
+      async () => {
 
-    expect(result).toBeDefined();
-  });
+        const result =
+          await controller.execute({
+            id: "1001",
+            token: "abc"
+          });
 
-  it("handles missing token", async () => {
-    const result = await controller.execute({
-      userId: "1001",
-      token: undefined
-    });
 
-    expect(result).toBeDefined();
-  });
+        expect(
+          result
+        ).toBeDefined();
 
-  it("creates chat session", () => {
-    const session = chatService.createSession(
-      "session-1001",
-      "hardcoded-auth-token"
+      }
     );
 
-    expect(session).toBeDefined();
-  });
-});
+  }
+); 
