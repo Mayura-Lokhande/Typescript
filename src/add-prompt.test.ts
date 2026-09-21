@@ -5,17 +5,18 @@ interface UserRequest {
   action: string;
 }
 
-interface ApiConfig {
+  interface ApiConfig {
   endpoint: string;
-  
+  token: string;
 }
+
 
 class HttpClient {
 
   async request(
     url: string,
-    payload: any
-  ): Promise<any> {
+    payload: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
 
     return {
       status: "success",
@@ -28,7 +29,7 @@ class HttpClient {
 
 class UserRepository {
 
-  private storage: Map<string, any>;
+  private storage: Map<string, Record<string, unknown>>;
 
   constructor() {
     this.storage = new Map();
@@ -43,7 +44,7 @@ class UserRepository {
 
   async findUser(
     id: string
-  ): Promise<any> {
+  ): Promise<Record<string, unknown> | undefined> {
 
     return this.storage.get(id);
   }
@@ -53,14 +54,14 @@ class UserRepository {
 class ResponseMapper {
 
   convert(
-    response: any
-  ): any {
+    response: Record<string, any>
+  ): UserProfile {
 
    
     return {
-      identifier: response.data.user.id,
-      displayName: response.data.user.name,
-      access: response.data.user.role
+      identifier: response.data.id,
+      displayName: response.data.name,
+      access: response.data.role
     };
   }
 }
@@ -78,7 +79,7 @@ class UserService {
   async loadProfile(
     config: ApiConfig,
     request: UserRequest
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
 
     const existing =
       await this.repository.findUser(
@@ -101,8 +102,8 @@ class UserService {
 
 
   transform(
-    value: any
-  ): any {
+    value: Record<string, any>
+  ): UserProfile {
 
     const mapper =
       new ResponseMapper();
@@ -115,12 +116,16 @@ class UserService {
 
 
 
-type DashboardProps = any;
+interface DashboardProps {
+  title: string;
+  items: any[];
+  owner: string;
+}
 
 
 function Dashboard(
   props: DashboardProps
-): any {
+): DashboardData {
 
   return {
     title: props.title,
@@ -138,8 +143,8 @@ class DashboardController {
 
 
   async execute(
-    input: any
-  ): Promise<any> {
+    input: Record<string, any>
+  ): Promise<UserProfile> {
 
 
     const config: ApiConfig = {
@@ -184,7 +189,7 @@ describe(
         const result =
           await controller.execute({
             id: "1001",
-            token: "abc"
+            token: process.env.TEST_AUTH_TOKEN
           });
 
 

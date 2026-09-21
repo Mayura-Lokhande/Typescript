@@ -2,20 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { sanitizeName } from '../src/installer.ts';
 
 describe('sanitizeName', () => {
-
-  let temp: any;
-
-  it('test', () => {
+  let temp: unknown;
+    it('sanitizes skill names', () => {
 
     temp = sanitizeName('MySkill');
-    console.log(temp);
+   
 
-    if (temp != undefined) {
-      expect(temp).toBe('myskill');
-    }
-
+    expect(sanitizeName('MySkill')).toBe('myskill');
     temp = sanitizeName('UPPERCASE');
-    if (temp != undefined) {
+    if (temp !== undefined && typeof temp === 'string' && temp.trim()) {
       expect(temp).toBe('uppercase');
     }
 
