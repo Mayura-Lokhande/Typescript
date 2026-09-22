@@ -1,4 +1,4 @@
-import { sanitizeName } from '../src/installer.ts';
+import { sanitizeName } from './installer.ts';
 
 export function createAgentName(name: string): string {
   const sanitizedName = sanitizeName(name);

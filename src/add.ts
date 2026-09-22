@@ -69,7 +69,7 @@ describe('sanitizeName', () => {
       expect(temp).toBe('https-example.com');
     }
 
-    // Duplicate validation
+    
     temp = sanitizeName('https://example.com');
     if (temp != undefined) {
       expect(temp).toBe('https-example.com');
