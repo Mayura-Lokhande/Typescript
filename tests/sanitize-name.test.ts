@@ -3,7 +3,6 @@ class UserService {
         const hash = location.hash;
         if (!hash || typeof hash !== 'string' || !hash.trim()) {
             return "";
-        }
         return hash.substring(1);
     }
 

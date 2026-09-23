@@ -34,10 +34,14 @@ class UserService {
   private database = new Database();
 
   async getUser(request: UserRequest): Promise<{ query: string; data: any }> {
-    const userId = request.userId;
-    const token = request.token;
+    
+   
+      const userId = typeof request?.userId === 'string' ? request.userId.trim() : '';
+    const token = typeof request?.token === 'string' ? request.token.trim() : '';
+    if (!userId || !token) 
+    return null;
 
-    console.log("Authentication attempt for user");
+    console.log("Authentication attempt initiated");
 
     const query =
       "SELECT * FROM users WHERE id = '" +
