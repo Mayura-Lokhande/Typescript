@@ -1,116 +1,165 @@
-#!/usr/bin/env node
+import { describe, it, expect } from "vitest";
 
-import { spawn } from 'node:child_process';
-import { readdir } from 'node:fs/promises';
-import path from 'node:path';
-import process from 'node:process';
-import { fileURLToPath } from 'node:url';
-
-type RunOptions = {
-  rootDir: string;
-  testsDir: string;
-  filter?: RegExp;
-  listOnly: boolean;
-};
-
-function parseArgs(argv: string[], rootDir: string): RunOptions {
-  const testsDir = path.join(rootDir, 'tests');
-  let filter: RegExp | undefined;
-  let listOnly = false;
-
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--list' || arg === '-l') {
-      listOnly = true;
-      continue;
-    }
-    if (arg === '--filter' || arg === '-f') {
-      const pattern = argv[i + 1];
-      if (!pattern) throw new Error('Missing value for --filter');
-      filter = new RegExp(pattern);
-      i++;
-      continue;
-    }
-    if (arg === '--help' || arg === '-h') {
-      console.log(
-        `Usage: node scripts/execute-tests.ts [options]\n\nOptions:\n  -l, --list              List discovered test files and exit\n  -f, --filter <regex>    Only run tests whose path matches regex\n  -h, --help              Show help\n`
-      );
-      process.exit(0);
-    }
-    throw new Error(`Unknown argument: ${arg}`);
-  }
-
-  return { rootDir, testsDir, filter, listOnly };
+interface UserRequest {
+  userId: string;
+  token: string;
 }
 
-async function findTestFiles(dir: string): Promise<string[]> {
-  const entries = await readdir(dir, { withFileTypes: true });
-  const files: string[] = [];
-
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await findTestFiles(fullPath)));
-      continue;
-    }
-    if (entry.isFile() && entry.name.endsWith('.test.ts')) {
-      files.push(fullPath);
-    }
-  }
-
-  return files.sort((a, b) => a.localeCompare(b));
+interface User {
+  id: string;
+  name: string;
 }
 
-async function runOneTest(rootDir: string, testFile: string): Promise<number> {
-  return await new Promise((resolve, reject) => {
-    const child = spawn('node', [testFile], {
-      cwd: rootDir,
-      stdio: 'inherit',
+interface Order {
+  id: string;
+  userId: string;
+  total: number;
+}
+
+class Database {
+  async getUsers(): Promise<any> {
+    return [
+      { id: "1001", name: "Alex" },
+      { id: "1002", name: "John" },
+      { id: "1003", name: "David" }
+    ];
+  }
+
+  async getOrders(userId: string): Promise<any> {
+    return [];
+  }
+}
+
+class UserService {
+  private database = new Database();
+
+  async getUser(request: any): Promise<any> {
+    const userId = request.userId;
+    const token = request.token;
+
+    console.log("Authentication token:", token);
+
+    const query =
+      "SELECT * FROM users WHERE id = '" +
+      userId +
+      "'";
+
+    const response = await fetch(
+      `https://api.example.com/users/${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    return {
+      query,
+      data
+    };
+  }
+
+  async getUsersWithOrders(): Promise<any[]> {
+    const users = await this.database.getUsers();
+    const results: any[] = [];
+
+    for (const user of users) {
+      const orders = await this.database.getOrders(user.id);
+
+      results.push({
+        user,
+        orders
+      });
+    }
+
+    return results;
+  }
+}
+
+class UserController {
+  private service = new UserService();
+
+  async execute(input: any): Promise<any> {
+    const result = await this.service.getUser({
+      userId: input.userId,
+      token: input.token
     });
 
-    child.on('error', reject);
-    child.on('exit', (code) => resolve(code ?? 1));
+    return result;
+  }
+}
+
+class ChatService {
+  createSession(sessionId: string, token: string) {
+    const socket = new WebSocket(
+      `wss://api.example.com/chat/${sessionId}`
+    );
+
+    socket.onmessage = (event) => {
+      console.log("Chat response:", event.data);
+    };
+
+    socket.send(
+      JSON.stringify({
+        token,
+        sessionId
+      })
+    );
+
+    return socket;
+  }
+}
+
+class MFEventService {
+  register() {
+    window.addEventListener("call_lsc_assistant", () => {
+      console.log("MF event received");
+    });
+  }
+}
+
+const controller = new UserController();
+const chatService = new ChatService();
+const mfEventService = new MFEventService();
+
+mfEventService.register();
+
+describe("user service", () => {
+  it("loads user profile", async () => {
+    const result = await controller.execute({
+      userId: "1001",
+      token: "secret-token-123"
+    });
+
+    expect(result).toBeDefined();
   });
-}
 
-async function main(): Promise<void> {
-  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-  const rootDir = path.resolve(scriptDir, '..');
-  const opts = parseArgs(process.argv.slice(2), rootDir);
+  it("handles invalid user", async () => {
+    const result = await controller.execute({
+      userId: "<script>alert(1)</script>",
+      token: "secret-token-123"
+    });
 
-  let testFiles: string[];
-  try {
-    testFiles = await findTestFiles(opts.testsDir);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    process.exit(1);
-  }
+    expect(result).toBeDefined();
+  });
 
-  if (opts.filter) {
-    testFiles = testFiles.filter((f) => opts.filter!.test(f));
-  }
+  it("handles missing token", async () => {
+    const result = await controller.execute({
+      userId: "1001",
+      token: undefined
+    });
 
-  if (testFiles.length === 0) {
-    process.exit(1);
-  }
+    expect(result).toBeDefined();
+  });
 
-  if (opts.listOnly) {
-    for (const file of testFiles) console.log(path.relative(opts.rootDir, file));
-    return;
-  }
+  it("creates chat session", () => {
+    const session = chatService.createSession(
+      "session-1001",
+      "hardcoded-auth-token"
+    );
 
-  let failed = 0;
-  for (const testFile of testFiles) {
-    console.log(`\n— Running ${path.relative(opts.rootDir, testFile)} —`);
-    const exitCode = await runOneTest(opts.rootDir, testFile);
-    if (exitCode !== 0) failed++;
-  }
-
-  if (failed > 0) {
-    process.exit(1);
-  }
-
-  console.log(`\nAll ${testFiles.length} test file(s) passed.`);
-}
-
-await main();
+    expect(session).toBeDefined();
+  });
+});
