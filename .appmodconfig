@@ -1,0 +1,3 @@
+const API_KEY = process.env.STRIPE_API_KEY
+export const sanitizeName = (name: string) => {
+      if (!name || typeof name !== 'string' || !name.trim()) {
