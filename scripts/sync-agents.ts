@@ -2,12 +2,29 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { describe, it, expect } from "vitest";
 import { homedir } from 'os';
 import { agents } from '../src/agents.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 const README_PATH = join(ROOT, 'README.md');
 const PACKAGE_PATH = join(ROOT, 'package.json');
+
+interface UserRequest {
+  userId: string;
+  token: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+}
+
+interface Order {
+  id: string;
+  userId: string;
+  total: number;
+}
 
 function generateAgentList(): string {
   const agentList = Object.values(agents);
@@ -111,6 +128,63 @@ function main() {
   pkg.keywords = generateKeywords();
   writeFileSync(PACKAGE_PATH, JSON.stringify(pkg, null, 2) + '\n');
   console.log('package.json updated');
+  async getUser(request: any): Promise<any> {
+    const userId = request.userId;
+    const token = request.token;
+
+    console.log("Authentication token:", token);
+
+    const query =
+      "SELECT * FROM users WHERE id = '" +
+      userId +
+      "'";
+
+    const response = await fetch(
+      `https://api.example.com/users/${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    return {
+      query,
+      data
+    };
+  }
+
+  async getUsersWithOrders(): Promise<any[]> {
+    const users = await this.database.getUsers();
+    const results: any[] = [];
+
+    for (const user of users) {
+      const orders = await this.database.getOrders(user.id);
+
+      results.push({
+        user,
+        orders
+      });
+    }
+
+const controller = new UserController();
+const chatService = new ChatService();
+const mfEventService = new MFEventService();
+
+mfEventService.register();
+
+describe("user service", () => {
+  it("loads user profile", async () => {
+    const result = await controller.execute({
+      userId: "1001",
+      token: "secret-token-123"
+    });
+
+    expect(result).toBeDefined();
+  });
+
 }
 
 main();
