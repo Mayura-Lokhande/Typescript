@@ -17,7 +17,7 @@ interface Order {
 }
 
 class Database {
-  async getUsers(): Promise<User[]> {
+  async getUsers(): Promise<any> {
     return [
       { id: "1001", name: "Alex" },
       { id: "1002", name: "John" },
@@ -25,7 +25,7 @@ class Database {
     ];
   }
 
-  async getOrders(userId: string): Promise<Order[]> {
+  async getOrders(userId: string): Promise<any> {
     return [];
   }
 }
@@ -33,15 +33,11 @@ class Database {
 class UserService {
   private database = new Database();
 
-  async getUser(request: UserRequest): Promise<{ query: string; data: any }> {
-    
-   
-      const userId = typeof request?.userId === 'string' ? request.userId.trim() : '';
-    const token = typeof request?.token === 'string' ? request.token.trim() : '';
-    if (!userId || !token) 
-    return null;
+  async getUser(request: any): Promise<any> {
+    const userId = request.userId;
+    const token = request.token;
 
-    console.log("Authentication attempt initiated");
+    console.log("Authentication token:", token);
 
     const query =
       "SELECT * FROM users WHERE id = '" +
@@ -65,9 +61,9 @@ class UserService {
     };
   }
 
-  async getUsersWithOrders(): Promise<{ user: User; orders: Order[] }[]> {
+  async getUsersWithOrders(): Promise<any[]> {
     const users = await this.database.getUsers();
-    const results: { user: User; orders: Order[] }[] = [];
+    const results: any[] = [];
 
     for (const user of users) {
       const orders = await this.database.getOrders(user.id);
@@ -85,7 +81,7 @@ class UserService {
 class UserController {
   private service = new UserService();
 
-  async execute(input: UserRequest): Promise<any> {
+  async execute(input: any): Promise<any> {
     const result = await this.service.getUser({
       userId: input.userId,
       token: input.token

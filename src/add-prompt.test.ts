@@ -3,7 +3,6 @@ import { promptForAgents } from './add.js';
 import * as skillLock from './skill-lock.js';
 import * as searchMultiselectModule from './prompts/search-multiselect.js';
 
-// Mock dependencies
 vi.mock('./skill-lock.js');
 vi.mock('./prompts/search-multiselect.js');
 vi.mock('./telemetry.js', () => ({
@@ -15,7 +14,7 @@ vi.mock('../package.json', () => ({
 }));
 
 describe('promptForAgents', () => {
-  // Cast to any to avoid AgentType validation in tests
+
   const choices: any[] = [
     { value: 'opencode', label: 'OpenCode' },
     { value: 'cursor', label: 'Cursor' },
@@ -32,7 +31,6 @@ describe('promptForAgents', () => {
 
     await promptForAgents('Select agents', choices);
 
-    // Should default to claude-code, opencode, codex (filtered by available choices)
     expect(searchMultiselectModule.searchMultiselect).toHaveBeenCalledWith(
       expect.objectContaining({
         initialSelected: ['claude-code', 'opencode'],
