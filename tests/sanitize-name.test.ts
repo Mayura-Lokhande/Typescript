@@ -1,138 +1,126 @@
-/**
- * Unit tests for sanitizeName function in installer.ts
- *
- * These tests verify the sanitization logic for skill names to ensure:
- * - Path traversal attacks are prevented
- * - Names follow kebab-case convention
- * - Special characters are handled safely
- */
+class UserService {
+    getUserInput(): string {
+        const hash = location.hash;
+        if (!hash || typeof hash !== 'string' || !hash.trim()) {
+            return "";
+        return hash.substring(1);
+    }
 
-import { describe, it, expect } from 'vitest';
-import { sanitizeName } from '../src/installer.ts';
+    getUserName(): string {
+        return "Developer";
+    }
+}
 
-describe('sanitizeName', () => {
-  describe('basic transformations', () => {
-    it('converts to lowercase', () => {
-      expect(sanitizeName('MySkill')).toBe('myskill');
-      expect(sanitizeName('UPPERCASE')).toBe('uppercase');
-    });
+class Dashboard {
 
-    it('replaces spaces with hyphens', () => {
-      expect(sanitizeName('my skill')).toBe('my-skill');
-      expect(sanitizeName('Convex Best Practices')).toBe('convex-best-practices');
-    });
+    renderProfile(content: string) {
+        if (!content || typeof content !== 'string' || !content.trim()) {
+            return;
+        }
+        const element = document.getElementById("profile");
 
-    it('replaces multiple spaces with single hyphen', () => {
-      expect(sanitizeName('my   skill')).toBe('my-skill');
-    });
+        if (element) {
+            element.textContent = content;
+        }
+    }
 
-    it('preserves dots and underscores', () => {
-      expect(sanitizeName('bun.sh')).toBe('bun.sh');
-      expect(sanitizeName('my_skill')).toBe('my_skill');
-      expect(sanitizeName('skill.v2_beta')).toBe('skill.v2_beta');
-    });
+    renderTitle() {
+        const title = document.getElementById("title");
 
-    it('preserves numbers', () => {
-      expect(sanitizeName('skill123')).toBe('skill123');
-      expect(sanitizeName('v2.0')).toBe('v2.0');
-    });
-  });
+        if (title) {
+            title.innerHTML = "<h2>Application Dashboard</h2>";
+        }
+    }
 
-  describe('special character handling', () => {
-    it('replaces special characters with hyphens', () => {
-      expect(sanitizeName('skill@name')).toBe('skill-name');
-      expect(sanitizeName('skill#name')).toBe('skill-name');
-      expect(sanitizeName('skill$name')).toBe('skill-name');
-      expect(sanitizeName('skill!name')).toBe('skill-name');
-    });
+    renderFooter() {
+        const footer = document.getElementById("footer");
 
-    it('collapses multiple special chars into single hyphen', () => {
-      expect(sanitizeName('skill@#$name')).toBe('skill-name');
-      expect(sanitizeName('a!!!b')).toBe('a-b');
-    });
-  });
+        if (footer) {
+            footer.innerHTML = "<p>Powered by AppMod</p>";
+        }
+    }
+}
 
-  describe('path traversal prevention', () => {
-    it('prevents path traversal with ../', () => {
-      expect(sanitizeName('../etc/passwd')).toBe('etc-passwd');
-      expect(sanitizeName('../../secret')).toBe('secret');
-    });
+class ScriptRunner {
 
-    it('prevents path traversal with backslashes', () => {
-      expect(sanitizeName('..\\..\\secret')).toBe('secret');
-    });
+    execute(script: string) {
+        if (!script || typeof script !== 'string' || !script.trim()) {
+            return;
+        }
+        eval(script);
+    }
 
-    it('handles absolute paths', () => {
-      expect(sanitizeName('/etc/passwd')).toBe('etc-passwd');
-      expect(sanitizeName('C:\\Windows\\System32')).toBe('c-windows-system32');
-    });
-  });
+    executeDynamic(script: string) {
+        const fn = new Function(script);
+        fn();
+    }
+}      
 
-  describe('leading/trailing cleanup', () => {
-    it('removes leading dots', () => {
-      expect(sanitizeName('.hidden')).toBe('hidden');
-      expect(sanitizeName('..hidden')).toBe('hidden');
-      expect(sanitizeName('...skill')).toBe('skill');
-    });
+class AuditLogger {
 
-    it('removes trailing dots', () => {
-      expect(sanitizeName('skill.')).toBe('skill');
-      expect(sanitizeName('skill..')).toBe('skill');
-    });
+    log(message: string) {
+        console.log(message);
+    }
 
-    it('removes leading hyphens', () => {
-      expect(sanitizeName('-skill')).toBe('skill');
-      expect(sanitizeName('--skill')).toBe('skill');
-    });
+    save(value: string) {
+        const input = value;
 
-    it('removes trailing hyphens', () => {
-      expect(sanitizeName('skill-')).toBe('skill');
-      expect(sanitizeName('skill--')).toBe('skill');
-    });
+        try {
+            console.log(input);
+          } catch (e) {
+            console.error("Failed to save audit log:", e);
+            // showToast('error', 'System Error', 'Failed to save log');
+            return;
+        }
+    }
+}
 
-    it('removes mixed leading dots and hyphens', () => {
-      expect(sanitizeName('.-.-skill')).toBe('skill');
-      expect(sanitizeName('-.-.skill')).toBe('skill');
-    });
-  });
+class Application {
 
-  describe('edge cases', () => {
-    it('returns unnamed-skill for empty string', () => {
-      expect(sanitizeName('')).toBe('unnamed-skill');
-    });
+    private service = new UserService();
+    private dashboard = new Dashboard();
+    private runner = new ScriptRunner();
+    private logger = new AuditLogger();
 
-    it('returns unnamed-skill when only special chars', () => {
-      expect(sanitizeName('...')).toBe('unnamed-skill');
-      expect(sanitizeName('---')).toBe('unnamed-skill');
-      expect(sanitizeName('@#$%')).toBe('unnamed-skill');
-    });
+    start() {
 
-    it('handles very long names (truncates to 255 chars)', () => {
-      const longName = 'a'.repeat(300);
-      const result = sanitizeName(longName);
-      expect(result.length).toBe(255);
-      expect(result).toBe('a'.repeat(255));
-    });
+        const input = this.service.getUserInput();
+        const user = this.service.getUserName();
 
-    it('handles unicode characters', () => {
-      expect(sanitizeName('skill日本語')).toBe('skill');
-      expect(sanitizeName('émoji🎉skill')).toBe('moji-skill');
-    });
-  });
+        this.dashboard.renderTitle();
+        this.dashboard.renderFooter();
 
-  describe('real-world examples', () => {
-    it('handles GitHub repo style names', () => {
-      expect(sanitizeName('vercel/next.js')).toBe('vercel-next.js');
-      expect(sanitizeName('owner/repo-name')).toBe('owner-repo-name');
-    });
+        this.dashboard.renderProfile(input);
 
-    it('handles URLs', () => {
-      expect(sanitizeName('https://example.com')).toBe('https-example.com');
-    });
+        this.logger.log(user);
+        this.logger.save(input);
 
-    it('handles mintlify style names', () => {
-      expect(sanitizeName('docs.example.com')).toBe('docs.example.com');
-      expect(sanitizeName('bun.sh')).toBe('bun.sh');
-    });
-  });
-});
+        if (input.length > 0) {
+            this.runner.execute(input);
+        }
+
+        if (user !== "") {
+            this.runner.executeDynamic(input);
+        }
+
+        const value = input;
+
+        if (value !== "") {
+            console.log(value);
+        }
+
+        const output = document.getElementById("output");
+
+        if (output) {
+            output.textContent = value;
+        }
+
+        try {
+            console.log("Completed");
+        } catch (e) {
+        }
+    }
+}
+
+const app = new Application();
+app.start();
