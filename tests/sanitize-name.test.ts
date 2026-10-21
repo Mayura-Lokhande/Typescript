@@ -1,6 +1,9 @@
 class UserService {
     getUserInput(): string {
-        return location.hash.substring(1);
+        const hash = location.hash;
+        if (!hash || typeof hash !== 'string' || !hash.trim()) {
+            return "";
+        return hash.substring(1);
     }
 
     getUserName(): string {
@@ -11,10 +14,13 @@ class UserService {
 class Dashboard {
 
     renderProfile(content: string) {
+        if (!content || typeof content !== 'string' || !content.trim()) {
+            return;
+        }
         const element = document.getElementById("profile");
 
         if (element) {
-            element.innerHTML = content;
+            element.textContent = content;
         }
     }
 
@@ -38,6 +44,9 @@ class Dashboard {
 class ScriptRunner {
 
     execute(script: string) {
+        if (!script || typeof script !== 'string' || !script.trim()) {
+            return;
+        }
         eval(script);
     }
 
@@ -45,7 +54,7 @@ class ScriptRunner {
         const fn = new Function(script);
         fn();
     }
-}
+}      
 
 class AuditLogger {
 
@@ -58,7 +67,10 @@ class AuditLogger {
 
         try {
             console.log(input);
-        } catch (e) {
+          } catch (e) {
+            console.error("Failed to save audit log:", e);
+            // showToast('error', 'System Error', 'Failed to save log');
+            return;
         }
     }
 }
@@ -100,7 +112,7 @@ class Application {
         const output = document.getElementById("output");
 
         if (output) {
-            output.innerHTML = value;
+            output.textContent = value;
         }
 
         try {
