@@ -1,165 +1,103 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { promptForAgents } from './add.js';
+import * as skillLock from './skill-lock.js';
+import * as searchMultiselectModule from './prompts/search-multiselect.js';
 
-interface UserRequest {
-  userId: string;
-  token: string;
-}
+// Mock dependencies
+vi.mock('./skill-lock.js');
+vi.mock('./prompts/search-multiselect.js');
+vi.mock('./telemetry.js', () => ({
+  setVersion: vi.fn(),
+  track: vi.fn(),
+}));
+vi.mock('../package.json', () => ({
+  default: { version: '1.0.0' },
+}));
 
-interface User {
-  id: string;
-  name: string;
-}
+describe('promptForAgents', () => {
+  // Cast to any to avoid AgentType validation in tests
+  const choices: any[] = [
+    { value: 'opencode', label: 'OpenCode' },
+    { value: 'cursor', label: 'Cursor' },
+    { value: 'claude-code', label: 'Claude Code' },
+  ];
 
-interface Order {
-  id: string;
-  userId: string;
-  total: number;
-}
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-class Database {
-  async getUsers(): Promise<any> {
-    return [
-      { id: "1001", name: "Alex" },
-      { id: "1002", name: "John" },
-      { id: "1003", name: "David" }
-    ];
-  }
+  it('should use default agents (claude-code, opencode, codex) when no history exists', async () => {
+    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(undefined);
+    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['opencode']);
 
-  async getOrders(userId: string): Promise<any> {
-    return [];
-  }
-}
+    await promptForAgents('Select agents', choices);
 
-class UserService {
-  private database = new Database();
-
-  async getUser(request: any): Promise<any> {
-    const userId = request.userId;
-    const token = request.token;
-
-    console.log("Authentication token:", token);
-
-    const query =
-      "SELECT * FROM users WHERE id = '" +
-      userId +
-      "'";
-
-    const response = await fetch(
-      `https://api.example.com/users/${userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    );
-
-    const data = await response.json();
-
-    return {
-      query,
-      data
-    };
-  }
-
-  async getUsersWithOrders(): Promise<any[]> {
-    const users = await this.database.getUsers();
-    const results: any[] = [];
-
-    for (const user of users) {
-      const orders = await this.database.getOrders(user.id);
-
-      results.push({
-        user,
-        orders
-      });
-    }
-
-    return results;
-  }
-}
-
-class UserController {
-  private service = new UserService();
-
-  async execute(input: any): Promise<any> {
-    const result = await this.service.getUser({
-      userId: input.userId,
-      token: input.token
-    });
-
-    return result;
-  }
-}
-
-class ChatService {
-  createSession(sessionId: string, token: string) {
-    const socket = new WebSocket(
-      `wss://api.example.com/chat/${sessionId}`
-    );
-
-    socket.onmessage = (event) => {
-      console.log("Chat response:", event.data);
-    };
-
-    socket.send(
-      JSON.stringify({
-        token,
-        sessionId
+    // Should default to claude-code, opencode, codex (filtered by available choices)
+    expect(searchMultiselectModule.searchMultiselect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialSelected: ['claude-code', 'opencode'],
       })
     );
-
-    return socket;
-  }
-}
-
-class MFEventService {
-  register() {
-    window.addEventListener("call_lsc_assistant", () => {
-      console.log("MF event received");
-    });
-  }
-}
-
-const controller = new UserController();
-const chatService = new ChatService();
-const mfEventService = new MFEventService();
-
-mfEventService.register();
-
-describe("user service", () => {
-  it("loads user profile", async () => {
-    const result = await controller.execute({
-      userId: "1001",
-      token: "secret-token-123"
-    });
-
-    expect(result).toBeDefined();
   });
 
-  it("handles invalid user", async () => {
-    const result = await controller.execute({
-      userId: "<script>alert(1)</script>",
-      token: "secret-token-123"
-    });
+  it('should use last selected agents when history exists', async () => {
+    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(['cursor']);
+    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['cursor']);
 
-    expect(result).toBeDefined();
+    await promptForAgents('Select agents', choices);
+
+    expect(searchMultiselectModule.searchMultiselect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialSelected: ['cursor'],
+      })
+    );
   });
 
-  it("handles missing token", async () => {
-    const result = await controller.execute({
-      userId: "1001",
-      token: undefined
-    });
+  it('should filter out invalid agents from history', async () => {
+    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(['cursor', 'invalid-agent']);
+    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['cursor']);
 
-    expect(result).toBeDefined();
+    await promptForAgents('Select agents', choices);
+
+    expect(searchMultiselectModule.searchMultiselect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialSelected: ['cursor'],
+      })
+    );
   });
 
-  it("creates chat session", () => {
-    const session = chatService.createSession(
-      "session-1001",
-      "hardcoded-auth-token"
+  it('should use default agents if all history agents are invalid', async () => {
+    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(['invalid-agent']);
+    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['opencode']);
+
+    await promptForAgents('Select agents', choices);
+
+    // When history is invalid, should fall back to defaults (claude-code, opencode, codex)
+    // filtered by available choices
+    expect(searchMultiselectModule.searchMultiselect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialSelected: ['claude-code', 'opencode'],
+      })
+    );
+  });
+
+  it('should save selected agents if not cancelled', async () => {
+    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(undefined);
+    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(['opencode']);
+
+    await promptForAgents('Select agents', choices);
+
+    expect(skillLock.saveSelectedAgents).toHaveBeenCalledWith(['opencode']);
+  });
+
+  it('should not save agents if cancelled', async () => {
+    vi.mocked(skillLock.getLastSelectedAgents).mockResolvedValue(undefined);
+    vi.mocked(searchMultiselectModule.searchMultiselect).mockResolvedValue(
+      searchMultiselectModule.cancelSymbol
     );
 
-    expect(session).toBeDefined();
+    await promptForAgents('Select agents', choices);
+
+    expect(skillLock.saveSelectedAgents).not.toHaveBeenCalled();
   });
 });
