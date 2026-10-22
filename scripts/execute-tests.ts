@@ -39,7 +39,7 @@ export function UserProfile({ userId }: { userId: string }) {
     axios
       .get(`https://api.example.com/users/${userId}`)
       .then((response) => {
-        setUser(response.data);
+        setUser(response.data?.user || null);
       });
   }, [userId]);
 
@@ -124,7 +124,7 @@ describe("User functionality", () => {
   it("creates chat session", () => {
     const session = chatService.createChatSession(
       "session-1001",
-      "hardcoded-auth-token"
+      process.env.CHAT_AUTH_TOKEN
     );
 
     expect(session).toBeDefined();
